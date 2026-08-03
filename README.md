@@ -13,14 +13,14 @@ The scraper runs every 5 minutes on GitHub Actions and publishes each docset to 
     "foldkit-docs": {
       "repository": "mpsuesser/scraped-docs-foldkit",
       "branch": "main",
-      "description": "Full scraped documentation for Foldkit",
+      "description": "Full scraped documentation for Foldkit"
     },
     "alchemy-docs": {
       "repository": "mpsuesser/scraped-docs-alchemy",
       "branch": "main",
-      "description": "Full scraped documentation for Alchemy",
-    },
-  },
+      "description": "Full scraped documentation for Alchemy"
+    }
+  }
 }
 ```
 
