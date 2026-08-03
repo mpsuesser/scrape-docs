@@ -2,7 +2,7 @@ name: Refresh documentation
 
 on:
   schedule:
-    - cron: "17 5 * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 permissions:
