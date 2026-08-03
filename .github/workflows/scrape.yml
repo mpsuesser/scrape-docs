@@ -56,8 +56,9 @@ jobs:
           ssh-keyscan github.com >> ~/.ssh/known_hosts
           git clone "git@github.com:mpsuesser/scraped-docs-${DOCSET}.git" .publish
           rsync -a --delete --exclude=.git/ "docs/deps/${DOCSET}/" .publish/
+          git -C .publish add --all
+          bun run scraper/discard-timestamp-only-changes.ts .publish
           cd .publish
-          git add --all
           if git diff --cached --quiet; then
             echo "No documentation changes"
             exit 0
