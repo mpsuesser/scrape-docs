@@ -14,6 +14,8 @@ import { AllContentStrategiesFailed, PageContentError } from './errors.ts';
 import { HttpText } from './http-text.ts';
 import {
 	ContentStrategy,
+	type DefuddleStrategy,
+	type DirectUrlStrategy,
 	PageContent,
 	type DocPage,
 	type SourceUrlStrategy
@@ -57,10 +59,109 @@ export const redactKnownExampleCredentials = (body: string): string =>
 	);
 
 const unsupportedMdx =
-	/<(?:PackageManagerTabs|Tab|Steps|Step|Callout|Tabs|TabItem)\b|src=\{__img\d+\}|^import .+ from ['"]@theme\//m;
+	/<[A-Z][A-Za-z]*\b|src=\{__img\d+\}|^import .+ from ['"]@theme\/|^export const \w+\s*=.*=>\s*\{/m;
+const fencedCodeBlock = /^(`{3,}|~{3,})[^\r\n]*\r?\n[\s\S]*?^\1\s*$/gm;
 
 export const isStandaloneMarkdown = (body: string): boolean =>
-	!unsupportedMdx.test(body);
+	!unsupportedMdx.test(body.replace(fencedCodeBlock, ''));
+
+const platformAvailabilityDefinition =
+	/^export const PlatformAvailability\s*=\s*\([\s\S]*?^};\s*/m;
+const platformAvailabilityUsage = /<PlatformAvailability\b([^>]*)\/>/g;
+
+const componentAttribute = (attributes: string, name: string): string | undefined =>
+	new RegExp(`\\b${name}=["']([^"']+)["']`).exec(attributes)?.[1];
+
+export const normalizeMintlifyMarkdown = (body: string): string =>
+	body
+		.replace(platformAvailabilityDefinition, '')
+		.replace(platformAvailabilityUsage, (_match, attributes: string) => {
+			const current = componentAttribute(attributes, 'current');
+			const vitess = componentAttribute(attributes, 'vitess');
+			const postgres = componentAttribute(attributes, 'postgres');
+			if (current === 'both') {
+				return '**Platform availability:** Vitess and Postgres';
+			}
+			const entries = [
+				current === 'vitess'
+					? 'Vitess'
+					: vitess === undefined
+						? undefined
+						: `[Vitess](${vitess})`,
+				current === 'postgres'
+					? 'Postgres'
+					: postgres === undefined
+						? undefined
+						: `[Postgres](${postgres})`
+			].filter((entry): entry is string => entry !== undefined);
+			return `**Platform availability:** ${entries.join(' and ')}${entries.length === 1 ? ' only' : ''}`;
+		});
+
+const dedent = (body: string): string => {
+	const lines = body.replace(/^\s*\n|\n\s*$/g, '').split(/\r?\n/);
+	const indentation = Math.min(
+		...lines
+			.filter((line) => line.trim().length > 0)
+			.map((line) => /^\s*/.exec(line)?.[0].length ?? 0)
+	);
+	return lines.map((line) => line.slice(indentation)).join('\n');
+};
+
+const componentValue = (attributes: string): string =>
+	componentAttribute(attributes, 'label') ??
+	componentAttribute(attributes, 'value') ??
+	'Example';
+
+export const normalizeBetterAuthMarkdown = (body: string): string =>
+	body
+		.replace(
+			/^[ \t]*<Step\b[^>]*>\s*\n\s*([^\r\n]+)([\s\S]*?)^[ \t]*<\/Step>/gm,
+			(_match, title: string, content: string) => {
+				const normalizedContent = dedent(content).replace(
+					/^[ \t]*([^\r\n]+?)\s+\[#[^\]]+\]\s*$/gm,
+					'#### $1'
+				);
+				return `### ${title.trim().replace(/\s+\[#[^\]]+\]\s*$/, '')}\n${normalizedContent}`;
+			}
+		)
+		.replace(
+			/^[ \t]*<CodeBlockTabsList\b[^>]*>[\s\S]*?<\/CodeBlockTabsList>/gm,
+			''
+		)
+		.replace(
+			/^[ \t]*<CodeBlockTab\b([^>]*)>([\s\S]*?)^[ \t]*<\/CodeBlockTab>/gm,
+			(_match, attributes: string, content: string) =>
+				`#### ${componentValue(attributes)}\n\n${dedent(content)}`
+		)
+		.replace(
+			/^[ \t]*<Tab\b([^>]*)>([\s\S]*?)^[ \t]*<\/Tab>/gm,
+			(_match, attributes: string, content: string) =>
+				`#### ${componentValue(attributes)}\n\n${dedent(content)}`
+		)
+		.replace(
+			/^[ \t]*<Callout\b[^>]*>([\s\S]*?)^[ \t]*<\/Callout>/gm,
+			(_match, content: string) =>
+				dedent(content)
+					.split(/\r?\n/)
+					.map((line) => `> ${line}`)
+					.join('\n')
+		)
+		.replace(/^[ \t]*<\/?(?:Steps|CodeBlockTabs|Tabs)\b[^>]*>[ \t]*$/gm, '')
+		.replace(/<ForkButton\b[^>]*\burl=["']([^"']+)["'][^>]*\/>/g, (_match, url: string) =>
+			`[View example on GitHub](https://github.com/${url})`
+		)
+		.replace(
+			/<iframe\b([\s\S]*?)\/>/g,
+			(_match, attributes: string) => {
+				const src = componentAttribute(attributes, 'src');
+				if (src === undefined) {
+					return '';
+				}
+				const title = componentAttribute(attributes, 'title') ?? 'Interactive example';
+				return `[${title}](${src})`;
+			}
+		)
+		.replace(/^[ \t]*([^\r\n]+?)\s+\[#[^\]]+\]\s*$/gm, '## $1');
 
 const docusaurusDirective =
 	/^:::(important|info|tip|warning|note|caution|danger)(?:[ \t]+([^\r\n]+))?\r?\n([\s\S]*?)^:::\s*$/gm;
@@ -104,6 +205,16 @@ const strategyName = (strategy: ContentStrategy): string =>
 		Match.exhaustive
 	);
 
+const replaceUrlPrefix = (
+	url: string,
+	replacements: ReadonlyArray<{ readonly from: string; readonly to: string }>
+): string => {
+	const replacement = replacements.find(({ from }) => url.startsWith(from));
+	return replacement === undefined
+		? url
+		: `${replacement.to}${url.slice(replacement.from.length)}`;
+};
+
 export class PageContentLoader extends Context.Service<
 	PageContentLoader,
 	{
@@ -137,7 +248,7 @@ export const PageContentLoaderLayer: Layer.Layer<
 							})
 					)
 				);
-				const body = yield* http.get(markdownUrl).pipe(
+				const fetchedBody = yield* http.get(markdownUrl).pipe(
 					Effect.mapError(
 						(cause) =>
 							new PageContentError({
@@ -148,6 +259,7 @@ export const PageContentLoaderLayer: Layer.Layer<
 							})
 					)
 				);
+				const body = normalizeMintlifyMarkdown(fetchedBody);
 				if (!isStandaloneMarkdown(body)) {
 					return yield* new PageContentError({
 						url: markdownUrl,
@@ -164,7 +276,7 @@ export const PageContentLoaderLayer: Layer.Layer<
 		);
 
 		const loadDirectUrl = Effect.fn('PageContentLoader.loadDirectUrl')(
-			function* (page: DocPage) {
+			function* (page: DocPage, strategy: DirectUrlStrategy) {
 				const fetchedBody = yield* http.get(page.url).pipe(
 					Effect.mapError(
 						(cause) =>
@@ -176,7 +288,17 @@ export const PageContentLoaderLayer: Layer.Layer<
 							})
 					)
 				);
-				const body = normalizeDocusaurusMarkdown(fetchedBody);
+				const docusaurusBody = normalizeDocusaurusMarkdown(fetchedBody);
+				const body = strategy.normalizeMdx
+					? normalizeBetterAuthMarkdown(docusaurusBody)
+					: docusaurusBody;
+				if (strategy.normalizeMdx && !isStandaloneMarkdown(body)) {
+					return yield* new PageContentError({
+						url: page.url,
+						strategy: 'DirectUrlStrategy',
+						message: `Direct payload contains unresolved MDX for ${page.url}`
+					});
+				}
 				return yield* requireNonEmptyBody(
 					page.url,
 					'DirectUrlStrategy',
@@ -225,14 +347,18 @@ export const PageContentLoaderLayer: Layer.Layer<
 		);
 
 		const loadDefuddle = Effect.fn('PageContentLoader.loadDefuddle')(
-			function* (page: DocPage) {
+			function* (page: DocPage, strategy: DefuddleStrategy) {
+				const sourceUrl = replaceUrlPrefix(
+					page.url,
+					strategy.urlPrefixReplacements
+				);
 				const html = yield* http
-					.get(page.url, 'text/html, application/xhtml+xml;q=0.9')
+					.get(sourceUrl, 'text/html, application/xhtml+xml;q=0.9')
 					.pipe(
 						Effect.mapError(
 							(cause) =>
 								new PageContentError({
-									url: page.url,
+									url: sourceUrl,
 									strategy: 'DefuddleStrategy',
 									message: cause.message,
 									cause
@@ -240,11 +366,11 @@ export const PageContentLoaderLayer: Layer.Layer<
 						)
 					);
 				const markdown = yield* defuddle.extractMarkdown(
-					page.url,
+					sourceUrl,
 					html
 				);
 				return yield* requireNonEmptyBody(
-					page.url,
+					sourceUrl,
 					'DefuddleStrategy',
 					markdown
 				);
@@ -260,11 +386,15 @@ export const PageContentLoaderLayer: Layer.Layer<
 						'MarkdownUrlStrategy',
 						() => loadMarkdownUrl(page)
 					),
-					Match.tag('DirectUrlStrategy', () => loadDirectUrl(page)),
+					Match.tag('DirectUrlStrategy', (directStrategy) =>
+						loadDirectUrl(page, directStrategy)
+					),
 					Match.tag('SourceUrlStrategy', (sourceStrategy) =>
 						loadSourceUrl(page, sourceStrategy)
 					),
-					Match.tag('DefuddleStrategy', () => loadDefuddle(page)),
+					Match.tag('DefuddleStrategy', (defuddleStrategy) =>
+						loadDefuddle(page, defuddleStrategy)
+					),
 					Match.exhaustive
 				);
 			}

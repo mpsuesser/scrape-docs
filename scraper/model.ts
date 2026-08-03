@@ -50,7 +50,10 @@ export class MarkdownUrlStrategy
 
 export class DirectUrlStrategy
 	extends Schema.Class<DirectUrlStrategy>('DirectUrlStrategy')({
-		_tag: Schema.tag('DirectUrlStrategy')
+		_tag: Schema.tag('DirectUrlStrategy'),
+		normalizeMdx: Schema.Boolean.pipe(
+			Schema.withConstructorDefault(Effect.succeed(false))
+		)
 	})
 {}
 
@@ -68,7 +71,10 @@ export class SourceUrlStrategy
 
 export class DefuddleStrategy
 	extends Schema.Class<DefuddleStrategy>('DefuddleStrategy')({
-		_tag: Schema.tag('DefuddleStrategy')
+		_tag: Schema.tag('DefuddleStrategy'),
+		urlPrefixReplacements: Schema.Array(UrlPrefixReplacement).pipe(
+			Schema.withConstructorDefault(Effect.succeed([]))
+		)
 	})
 {}
 

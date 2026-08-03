@@ -5,7 +5,9 @@ import { parseHTML } from 'linkedom';
 import { prepareDocumentForExtraction } from '../defuddle-extractor.ts';
 import {
 	isStandaloneMarkdown,
+	normalizeBetterAuthMarkdown,
 	normalizeDocusaurusMarkdown,
+	normalizeMintlifyMarkdown,
 	redactKnownExampleCredentials
 } from '../page-content-loader.ts';
 
@@ -68,6 +70,100 @@ describe('content normalization', () => {
 		);
 		assert.isFalse(isStandaloneMarkdown('<img src={__img0} />'));
 		assert.isTrue(isStandaloneMarkdown('# Plain Markdown'));
+	});
+
+	it('converts PlanetScale platform components without leaking JSX', () => {
+		const output = normalizeMintlifyMarkdown(`# Page
+
+export const PlatformAvailability = ({current, vitess, postgres}) => {
+  const docsHref = path => {
+    if (!path) return path;
+    return path.startsWith('/') ? path : \`/\${path}\`;
+  };
+  const engines = [current, vitess, postgres];
+  return <div className="tailwind">{engines.map(engine => {
+    return <span>{docsHref(engine)}</span>;
+  })}</div>;
+};
+
+<PlatformAvailability current="both" />
+
+Body`);
+
+		assert.include(output, '**Platform availability:** Vitess and Postgres');
+		assert.include(output, 'Body');
+		assert.notInclude(output, 'export const PlatformAvailability');
+		assert.notInclude(output, 'docsHref');
+		assert.notInclude(output, 'engines.map');
+		assert.notInclude(output, 'className=');
+	});
+
+	it('preserves linked alternatives in platform availability', () => {
+		const output = normalizeMintlifyMarkdown(
+			'<PlatformAvailability current="vitess" postgres="/docs/postgres" />'
+		);
+
+		assert.strictEqual(
+			output,
+			'**Platform availability:** Vitess and [Postgres](/docs/postgres)'
+		);
+	});
+
+	it('rejects unfenced exported components that have no safe normalizer', () => {
+		assert.isFalse(
+			isStandaloneMarkdown('export const Widget = () => {\n  return <div />;\n};')
+		);
+		assert.isTrue(
+			isStandaloneMarkdown('```ts\nexport const Widget = () => {\n  return 1;\n};\n```')
+		);
+	});
+
+	it('converts Better Auth components while preserving every tab', () => {
+		const output = normalizeBetterAuthMarkdown(`<Steps>
+  <Step>
+    Install packages [#install-packages]
+
+    <CodeBlockTabs defaultValue="npm">
+      <CodeBlockTabsList><CodeBlockTabsTrigger value="npm">npm</CodeBlockTabsTrigger></CodeBlockTabsList>
+      <CodeBlockTab value="npm">
+        \`\`\`bash
+        npm install better-auth
+        \`\`\`
+      </CodeBlockTab>
+      <CodeBlockTab value="pnpm">
+        \`\`\`bash
+        pnpm add better-auth
+        \`\`\`
+      </CodeBlockTab>
+    </CodeBlockTabs>
+
+    <Callout type="info">
+      Keep this detail.
+    </Callout>
+  </Step>
+</Steps>`);
+
+		assert.include(output, '### Install packages');
+		assert.include(output, '#### npm\n\n```bash\nnpm install better-auth');
+		assert.include(output, '#### pnpm\n\n```bash\npnpm add better-auth');
+		assert.include(output, '> Keep this detail.');
+		assert.isTrue(isStandaloneMarkdown(output));
+	});
+
+	it('converts Better Auth interactive embeds to links', () => {
+		const output = normalizeBetterAuthMarkdown(`<ForkButton url="better-auth/examples/tree/main/astro-example" />
+<iframe
+  src="https://example.com/demo"
+  style={{ height: "500px" }}
+  title="Demo"
+/>`);
+
+		assert.include(
+			output,
+			'[View example on GitHub](https://github.com/better-auth/examples/tree/main/astro-example)'
+		);
+		assert.include(output, '[Demo](https://example.com/demo)');
+		assert.notInclude(output, '<iframe');
 	});
 
 	it('converts Docusaurus tabs to labeled standalone sections', () => {

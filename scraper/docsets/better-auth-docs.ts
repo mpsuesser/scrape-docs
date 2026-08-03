@@ -7,6 +7,7 @@ import * as Option from 'effect/Option';
 
 import {
 	DirectUrlStrategy,
+	DefuddleStrategy,
 	DocScraperLayer,
 	DocSetConfig,
 	DocSetScraper,
@@ -32,7 +33,17 @@ const betterAuthDocSet = new DocSetConfig({
 		]
 	}),
 	outputDirectory: 'docs/deps/better-auth',
-	contentStrategies: [new DirectUrlStrategy({})],
+	contentStrategies: [
+		new DirectUrlStrategy({ normalizeMdx: true }),
+		new DefuddleStrategy({
+			urlPrefixReplacements: [
+				new UrlPrefixReplacement({
+					from: betterAuthLlmsDocsUrlPrefix,
+					to: betterAuthDocsUrlPrefix
+				})
+			]
+		})
+	],
 	postProcessingStrategies: [
 		new RewriteDocsetWebLinksStrategy({
 			urlPrefixReplacements: [
