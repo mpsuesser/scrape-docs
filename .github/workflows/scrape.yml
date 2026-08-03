@@ -1,0 +1,65 @@
+name: Refresh documentation
+
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: refresh-docs
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        docset:
+          - alchemy
+          - electron
+          - ent-go
+          - ent-ts
+          - foldkit
+          - ladybugdb
+          - pi
+          - ts-morph
+          - turborepo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - run: bun install --frozen-lockfile
+
+      - name: Scrape ${{ matrix.docset }}
+        run: bun run scrape-docs:${{ matrix.docset }}
+
+      - name: Publish ${{ matrix.docset }}
+        env:
+          DOCS_REPO_KEYS: ${{ secrets.DOCS_REPO_KEYS }}
+          DOCSET: ${{ matrix.docset }}
+        run: |
+          install -m 700 -d ~/.ssh
+          jq -r --arg docset "$DOCSET" '.[$docset]' <<< "$DOCS_REPO_KEYS" > ~/.ssh/id_ed25519
+          test -s ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+          git clone "git@github.com:mpsuesser/scraped-docs-${DOCSET}.git" .publish
+          rsync -a --delete --exclude=.git/ "docs/deps/${DOCSET}/" .publish/
+          cd .publish
+          git add --all
+          if git diff --cached --quiet; then
+            echo "No documentation changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "docs: refresh ${DOCSET}"
+          git push

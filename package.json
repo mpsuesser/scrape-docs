@@ -1,0 +1,40 @@
+{
+  "$schema": "https://www.schemastore.org/package.json",
+  "name": "scrape-docs",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.3.14",
+  "scripts": {
+    "alchemy:plan": "alchemy plan",
+    "alchemy:deploy": "alchemy deploy",
+    "alchemy:destroy": "alchemy destroy",
+    "scrape-docs:foldkit": "bun run scripts/scraper/docsets/foldkit-docs.ts",
+    "scrape-docs:alchemy": "bun run scripts/scraper/docsets/alchemy-docs.ts",
+    "scrape-docs:ent-ts": "bun run scripts/scraper/docsets/ent-ts-docs.ts",
+    "scrape-docs:ent-go": "bun run scripts/scraper/docsets/ent-go-docs.ts",
+    "scrape-docs:ladybugdb": "bun run scripts/scraper/docsets/ladybugdb-docs.ts",
+    "scrape-docs:ts-morph": "bun run scripts/scraper/docsets/ts-morph-docs.ts",
+    "scrape-docs:pi": "bun run scripts/scraper/docsets/pi-docs.ts",
+    "scrape-docs:electron": "bun run scripts/scraper/docsets/electron-docs.ts",
+    "scrape-docs:turborepo": "bun run scripts/scraper/docsets/turborepo-docs.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@effect/platform-bun": "4.0.0-beta.94",
+    "alchemy": "2.0.0-beta.61",
+    "defuddle": "0.18.1",
+    "effect": "4.0.0-beta.94",
+    "linkedom": "0.18.12"
+  },
+  "devDependencies": {
+    "@effect/platform-node": "4.0.0-beta.94",
+    "@effect/vitest": "4.0.0-beta.94",
+    "@types/bun": "1.3.14",
+    "typescript": "7.0.1-rc",
+    "vitest": "4.1.8"
+  },
+  "engines": {
+    "bun": ">=1.3.14"
+  }
+}
