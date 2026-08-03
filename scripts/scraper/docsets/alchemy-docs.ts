@@ -9,7 +9,8 @@ import {
 	DocSetConfig,
 	DocSetScraper,
 	LlmsTxtIndexStrategy,
-	MarkdownUrlStrategy
+	MarkdownUrlStrategy,
+	RewriteDocsetWebLinksStrategy
 } from '../doc-scraper.ts';
 
 const alchemyDocSet = new DocSetConfig({
@@ -21,6 +22,7 @@ const alchemyDocSet = new DocSetConfig({
 		new MarkdownUrlStrategy({}),
 		new DefuddleStrategy({})
 	],
+	postProcessingStrategies: [new RewriteDocsetWebLinksStrategy({})],
 	concurrency: 8,
 	cleanOutputDirectory: true
 });

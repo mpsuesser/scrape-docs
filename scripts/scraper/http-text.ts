@@ -9,7 +9,10 @@ const defaultUserAgent =
 export class HttpText extends Context.Service<
 	HttpText,
 	{
-		readonly get: (url: string) => Effect.Effect<string, HttpFetchError>;
+		readonly get: (
+			url: string,
+			accept?: string
+		) => Effect.Effect<string, HttpFetchError>;
 	}
 >()('@mydb/scripts/scraper/HttpText') {}
 
@@ -21,14 +24,17 @@ export const HttpTextLayer: Layer.Layer<
 	HttpText,
 	Effect.gen(function* () {
 		const client = (yield* HttpClient.HttpClient).pipe(
+			HttpClient.followRedirects(),
 			HttpClient.filterStatusOk
 		);
 
-		const get = Effect.fn('HttpText.get')(function* (url: string) {
+		const get = Effect.fn('HttpText.get')(function* (
+			url: string,
+			accept =
+				'text/markdown, text/plain, application/vnd.github+json;q=0.9, application/json;q=0.9, application/xml;q=0.8, text/xml;q=0.8, text/html;q=0.7'
+		) {
 			const request = HttpClientRequest.get(url).pipe(
-				HttpClientRequest.accept(
-					'text/markdown, text/plain, application/vnd.github+json;q=0.9, application/json;q=0.9, application/xml;q=0.8, text/xml;q=0.8, text/html;q=0.7'
-				),
+				HttpClientRequest.accept(accept),
 				HttpClientRequest.setHeader('User-Agent', defaultUserAgent)
 			);
 			const response = yield* client.execute(request).pipe(

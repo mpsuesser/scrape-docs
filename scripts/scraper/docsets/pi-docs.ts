@@ -8,7 +8,8 @@ import {
 	DocScraperLayer,
 	DocSetConfig,
 	DocSetScraper,
-	GithubMarkdownDirectoryIndexStrategy
+	GithubMarkdownDirectoryIndexStrategy,
+	RewriteDocsetWebLinksStrategy
 } from '../doc-scraper.ts';
 
 const piDocSet = new DocSetConfig({
@@ -18,6 +19,7 @@ const piDocSet = new DocSetConfig({
 	indexStrategy: new GithubMarkdownDirectoryIndexStrategy({}),
 	outputDirectory: 'docs/deps/pi',
 	contentStrategies: [new DirectUrlStrategy({})],
+	postProcessingStrategies: [new RewriteDocsetWebLinksStrategy({})],
 	concurrency: 8,
 	cleanOutputDirectory: true
 });

@@ -18,6 +18,7 @@ import { DocPostProcessError } from './errors.ts';
 import {
 	type DocSetConfig,
 	type PostProcessingStrategy,
+	type UrlPrefixReplacement,
 	type WrittenDocument
 } from './model.ts';
 
@@ -38,11 +39,12 @@ const normalizeHostname = (hostname: string): string =>
 	Str.startsWith('www.')(hostname) ? pipe(hostname, Str.slice(4)) : hostname;
 
 const normalizedDocUrlKey = (url: URL): string => {
-	url.hash = '';
-	url.search = '';
-	url.hostname = normalizeHostname(url.hostname);
-	url.pathname = normalizePathname(url.pathname);
-	return url.toString();
+	const normalized = new URL(url);
+	normalized.hash = '';
+	normalized.search = '';
+	normalized.hostname = normalizeHostname(normalized.hostname);
+	normalized.pathname = normalizePathname(normalized.pathname);
+	return normalized.toString();
 };
 
 const normalizedDocUrlKeyFromString = (url: string): Option.Option<string> =>
@@ -157,14 +159,40 @@ const knownDocumentPathByRootHref = (
 		)
 	);
 
+const replaceUrlPrefix = (
+	urlText: string,
+	replacements: ReadonlyArray<UrlPrefixReplacement>
+): string =>
+	pipe(
+		replacements,
+		Arr.findFirst((replacement) => {
+			if (!Str.startsWith(replacement.from)(urlText)) {
+				return false;
+			}
+			const boundary = urlText[replacement.from.length];
+			return (
+				boundary === undefined ||
+				boundary === '/' ||
+				boundary === '?' ||
+				boundary === '#'
+			);
+		}),
+		Option.map((replacement) =>
+			`${replacement.to}${urlText.slice(replacement.from.length)}`
+		),
+		Option.getOrElse(() => urlText)
+	);
+
 const replacementForUrl = (
 	path: Path.Path,
 	knownPathsByUrl: HashMap.HashMap<string, string>,
 	source: WrittenDocument,
-	urlText: string
+	urlText: string,
+	urlPrefixReplacements: ReadonlyArray<UrlPrefixReplacement>
 ): Option.Option<string> =>
 	pipe(
-		decodeUrlOption(urlText),
+		replaceUrlPrefix(urlText, urlPrefixReplacements),
+		decodeUrlOption,
 		Option.flatMap((url) => {
 			const suffix = `${url.search}${url.hash}`;
 			return pipe(
@@ -183,34 +211,20 @@ const rewriteKnownUrls = (
 	path: Path.Path,
 	knownPathsByUrl: HashMap.HashMap<string, string>,
 	source: WrittenDocument,
-	body: string
+	body: string,
+	urlPrefixReplacements: ReadonlyArray<UrlPrefixReplacement>
 ): string => {
-	const urls = pipe(
-		Str.matchAll(webUrl)(body),
-		Arr.fromIterable,
-		Arr.flatMap((match) =>
-			pipe(
-				group(match, 0),
-				Option.match({
-					onNone: () => [],
-					onSome: (urlText) => [urlText]
-				})
-			)
-		),
-		Arr.dedupe
-	);
-
-	return pipe(
-		urls,
-		Arr.reduce(body, (rewritten, urlText) =>
-			pipe(
-				replacementForUrl(path, knownPathsByUrl, source, urlText),
-				Option.match({
-					onNone: () => rewritten,
-					onSome: (replacement) =>
-						pipe(rewritten, Str.replaceAll(urlText, replacement))
-				})
-			))
+	return body.replace(webUrl, (urlText) =>
+		pipe(
+			replacementForUrl(
+				path,
+				knownPathsByUrl,
+				source,
+				urlText,
+				urlPrefixReplacements
+			),
+			Option.getOrElse(() => urlText)
+		)
 	);
 };
 
@@ -218,9 +232,11 @@ const rootRelativeMarkdownHref = /\]\((\/(?!\/)[^)#?\s]+)([?#][^)]*)?\)/g;
 
 const rewriteKnownRootRelativeLinks = (
 	path: Path.Path,
+	knownPathsByUrl: HashMap.HashMap<string, string>,
 	knownPathsByRootHref: HashMap.HashMap<string, string>,
 	source: WrittenDocument,
-	body: string
+	body: string,
+	urlPrefixReplacements: ReadonlyArray<UrlPrefixReplacement>
 ): string => {
 	const hrefs = pipe(
 		Str.matchAll(rootRelativeMarkdownHref)(body),
@@ -251,9 +267,49 @@ const rewriteKnownRootRelativeLinks = (
 		hrefs,
 		Arr.reduce(body, (rewritten, { href, suffix }) =>
 			pipe(
-				HashMap.get(knownPathsByRootHref, href),
+				decodeUrlOption(source.url),
+				Option.flatMap((sourceUrl) => {
+					const absoluteText = new URL(
+						`${href}${suffix}`,
+						sourceUrl
+					).toString();
+					return pipe(
+						decodeUrlOption(
+							replaceUrlPrefix(
+								absoluteText,
+								urlPrefixReplacements
+							)
+						),
+						Option.flatMap((resolved) =>
+							HashMap.get(
+								knownPathsByUrl,
+								normalizedDocUrlKey(resolved)
+							)
+						),
+						Option.orElse(() =>
+							HashMap.get(knownPathsByRootHref, href)
+						)
+					);
+				}),
 				Option.match({
-					onNone: () => rewritten,
+					onNone: () => {
+						if (source.strategy === 'DirectUrlStrategy') {
+							return rewritten;
+						}
+						return pipe(
+							decodeUrlOption(source.url),
+							Option.map((sourceUrl) =>
+								pipe(
+									rewritten,
+									Str.replaceAll(
+										`](${href}${suffix})`,
+										`](${new URL(`${href}${suffix}`, sourceUrl).toString()})`
+									)
+								)
+							),
+							Option.getOrElse(() => rewritten)
+						);
+					},
 					onSome: (targetPath) => {
 						const replacement = relativeMarkdownPath(
 							path,
@@ -273,6 +329,72 @@ const rewriteKnownRootRelativeLinks = (
 	);
 };
 
+const relativeMarkdownHref = /(!?\[[^\]]*\]\()((?![/#]|[a-z][a-z\d+.-]*:)[^)\s]+)(\))/gi;
+
+const githubUrlForRawUrl = (url: URL): Option.Option<string> => {
+	if (url.hostname !== 'raw.githubusercontent.com') {
+		return Option.none();
+	}
+	const segments = pipe(
+		Str.split(url.pathname, '/'),
+		Arr.filter(Str.isNonEmpty)
+	);
+	if (segments.length < 4) {
+		return Option.none();
+	}
+	const [owner, repo, ref, ...fileSegments] = segments;
+	if (owner === undefined || repo === undefined || ref === undefined) {
+		return Option.none();
+	}
+	return Option.some(
+		`https://github.com/${owner}/${repo}/blob/${ref}/${fileSegments.join('/')}${url.search}${url.hash}`
+	);
+};
+
+const rewriteRelativeLinks = (
+	path: Path.Path,
+	knownPathsByUrl: HashMap.HashMap<string, string>,
+	source: WrittenDocument,
+	body: string
+): string =>
+	body.replace(
+		relativeMarkdownHref,
+		(_match, prefix: string, href: string, suffix: string) =>
+			pipe(
+				decodeUrlOption(source.url),
+				Option.map((sourceUrl) => new URL(href, sourceUrl)),
+				Option.map((targetUrl) => {
+					const isImage = Str.startsWith('!')(prefix);
+					const targetSuffix = `${targetUrl.search}${targetUrl.hash}`;
+					return pipe(
+						HashMap.get(
+							knownPathsByUrl,
+							normalizedDocUrlKey(targetUrl)
+						),
+						Option.map(
+							(targetPath) =>
+								`${prefix}${relativeMarkdownPath(path, source, targetPath)}${targetSuffix}${suffix}`
+						),
+						Option.orElse(() =>
+							isImage
+								? Option.some(
+										`${prefix}${targetUrl.toString()}${suffix}`
+									)
+								: pipe(
+									githubUrlForRawUrl(targetUrl),
+									Option.map(
+										(githubUrl) =>
+											`${prefix}${githubUrl}${suffix}`
+									)
+								)
+						),
+						Option.getOrElse(() => `${prefix}${href}${suffix}`)
+					);
+				}),
+				Option.getOrElse(() => `${prefix}${href}${suffix}`)
+			)
+	);
+
 /**
  * Rewrites links that point to other documents in the same scraped docset to relative markdown paths.
  */
@@ -281,24 +403,39 @@ export const rewriteKnownDocLinksInMarkdown = (
 	documents: ReadonlyArray<WrittenDocument>,
 	source: WrittenDocument,
 	content: string,
-	outputDirectory?: string
+	outputDirectory?: string,
+	urlPrefixReplacements: ReadonlyArray<UrlPrefixReplacement> = []
 ): string => {
 	const frontmatter = leadingFrontmatterText(content);
 	const body = pipe(content, Str.slice(frontmatter.length));
 	const knownPathsByUrl = knownDocumentPathByUrl(documents);
-	const rewrittenUrls = rewriteKnownUrls(path, knownPathsByUrl, source, body);
-	return `${frontmatter}${
+	const rewrittenRelativeLinks = rewriteRelativeLinks(
+		path,
+		knownPathsByUrl,
+		source,
+		body
+	);
+	const rewrittenUrls = rewriteKnownUrls(
+		path,
+		knownPathsByUrl,
+		source,
+		rewrittenRelativeLinks,
+		urlPrefixReplacements
+	);
+	const rewrittenRootLinks =
 		Option.match(Option.fromNullishOr(outputDirectory), {
 			onNone: () => rewrittenUrls,
 			onSome: (directory) =>
 				rewriteKnownRootRelativeLinks(
 					path,
+					knownPathsByUrl,
 					knownDocumentPathByRootHref(path, directory, documents),
 					source,
-					rewrittenUrls
+					rewrittenUrls,
+					urlPrefixReplacements
 				)
-		})
-	}`;
+		});
+	return `${frontmatter}${rewrittenRootLinks}`;
 };
 
 const mapPostProcessError =
@@ -333,7 +470,8 @@ export const DocPostProcessorLayer: Layer.Layer<
 			'DocPostProcessor.rewriteDocsetWebLinks'
 		)(function* (
 			docSet: DocSetConfig,
-			documents: ReadonlyArray<WrittenDocument>
+			documents: ReadonlyArray<WrittenDocument>,
+			urlPrefixReplacements: ReadonlyArray<UrlPrefixReplacement>
 		) {
 			const changed = yield* Effect.forEach(
 				documents,
@@ -354,7 +492,8 @@ export const DocPostProcessorLayer: Layer.Layer<
 							documents,
 							document,
 							current,
-							docSet.outputDirectory
+							docSet.outputDirectory,
+							urlPrefixReplacements
 						);
 						const unchanged = stringEquivalence(current, next);
 						yield* Bool.match(unchanged, {
@@ -392,7 +531,12 @@ export const DocPostProcessorLayer: Layer.Layer<
 				return yield* Match.value(strategy).pipe(
 					Match.tag(
 						'RewriteDocsetWebLinksStrategy',
-						() => rewriteDocsetWebLinks(docSet, documents)
+						(linkStrategy) =>
+							rewriteDocsetWebLinks(
+								docSet,
+								documents,
+								linkStrategy.urlPrefixReplacements
+							)
 					),
 					Match.exhaustive
 				);

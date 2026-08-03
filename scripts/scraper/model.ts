@@ -54,6 +54,18 @@ export class DirectUrlStrategy
 	})
 {}
 
+export class PageSource extends Schema.Class<PageSource>('PageSource')({
+	pageUrl: Schema.NonEmptyString,
+	sourceUrl: Schema.NonEmptyString
+}) {}
+
+export class SourceUrlStrategy
+	extends Schema.Class<SourceUrlStrategy>('SourceUrlStrategy')({
+		_tag: Schema.tag('SourceUrlStrategy'),
+		sources: Schema.NonEmptyArray(PageSource)
+	})
+{}
+
 export class DefuddleStrategy
 	extends Schema.Class<DefuddleStrategy>('DefuddleStrategy')({
 		_tag: Schema.tag('DefuddleStrategy')
@@ -63,6 +75,7 @@ export class DefuddleStrategy
 export const ContentStrategy = Schema.Union([
 	MarkdownUrlStrategy,
 	DirectUrlStrategy,
+	SourceUrlStrategy,
 	DefuddleStrategy
 ]).pipe(Schema.toTaggedUnion('_tag'));
 export type ContentStrategy = typeof ContentStrategy.Type;
@@ -71,7 +84,10 @@ export class RewriteDocsetWebLinksStrategy
 	extends Schema.Class<RewriteDocsetWebLinksStrategy>(
 		'RewriteDocsetWebLinksStrategy'
 	)({
-		_tag: Schema.tag('RewriteDocsetWebLinksStrategy')
+		_tag: Schema.tag('RewriteDocsetWebLinksStrategy'),
+		urlPrefixReplacements: Schema.Array(UrlPrefixReplacement).pipe(
+			Schema.withConstructorDefault(Effect.succeed([]))
+		)
 	})
 {}
 

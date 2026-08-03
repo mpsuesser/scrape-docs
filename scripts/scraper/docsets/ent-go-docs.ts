@@ -9,8 +9,10 @@ import {
 	DocScraperLayer,
 	DocSetConfig,
 	DocSetScraper,
+	PageSource,
 	RewriteDocsetWebLinksStrategy,
-	SitemapIndexStrategy
+	SitemapIndexStrategy,
+	SourceUrlStrategy
 } from '../doc-scraper.ts';
 
 const entGoDocSet = new DocSetConfig({
@@ -21,7 +23,28 @@ const entGoDocSet = new DocSetConfig({
 		outputPathUrlPrefix: Option.some('https://entgo.io/docs/')
 	}),
 	outputDirectory: 'docs/deps/ent-go',
-	contentStrategies: [new DefuddleStrategy({})],
+	contentStrategies: [
+		new SourceUrlStrategy({
+			sources: [
+				new PageSource({
+					pageUrl: 'https://entgo.io/docs/templates',
+					sourceUrl:
+						'https://raw.githubusercontent.com/ent/ent/master/doc/md/templates.md'
+				}),
+				new PageSource({
+					pageUrl: 'https://entgo.io/docs/schema-mixin',
+					sourceUrl:
+						'https://raw.githubusercontent.com/ent/ent/master/doc/md/schema-mixin.md'
+				}),
+				new PageSource({
+					pageUrl: 'https://entgo.io/docs/privacy',
+					sourceUrl:
+						'https://raw.githubusercontent.com/ent/ent/master/doc/md/privacy.mdx'
+				})
+			]
+		}),
+		new DefuddleStrategy({})
+	],
 	postProcessingStrategies: [new RewriteDocsetWebLinksStrategy({})],
 	concurrency: 8,
 	cleanOutputDirectory: true

@@ -10,7 +10,9 @@ import {
 	DocSetConfig,
 	DocSetScraper,
 	MarkdownUrlStrategy,
-	SitemapIndexStrategy
+	RewriteDocsetWebLinksStrategy,
+	SitemapIndexStrategy,
+	UrlPrefixReplacement
 } from '../doc-scraper.ts';
 
 const turborepoDocSet = new DocSetConfig({
@@ -24,6 +26,16 @@ const turborepoDocSet = new DocSetConfig({
 	contentStrategies: [
 		new MarkdownUrlStrategy({}),
 		new DefuddleStrategy({})
+	],
+	postProcessingStrategies: [
+		new RewriteDocsetWebLinksStrategy({
+			urlPrefixReplacements: [
+				new UrlPrefixReplacement({
+					from: 'https://turborepo.dev/en/docs',
+					to: 'https://turborepo.dev/docs'
+				})
+			]
+		})
 	],
 	concurrency: 8,
 	cleanOutputDirectory: true

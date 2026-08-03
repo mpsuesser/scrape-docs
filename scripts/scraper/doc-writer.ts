@@ -9,6 +9,7 @@ import {
 	String as Str
 } from 'effect';
 import { pipe } from 'effect/Function';
+import { parse as parseYaml } from 'yaml';
 
 import { DocWriteError, InvalidDocUrlError } from './errors.ts';
 import {
@@ -32,6 +33,37 @@ const yamlString = (value: string): string =>
 const stripLeadingFrontmatter = (body: string): string =>
 	pipe(body, Str.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n+/, ''));
 
+const sourceFrontmatter = /^---\r?\n([\s\S]*?)\r?\n---/;
+
+export const sourceMetadata = (
+	body: string
+): { readonly title?: string; readonly description?: string } => {
+	const frontmatter = sourceFrontmatter.exec(body)?.[1];
+	if (frontmatter === undefined) {
+		return {};
+	}
+	let parsed: unknown;
+	try {
+		parsed = parseYaml(frontmatter);
+	} catch {
+		return {};
+	}
+	if (typeof parsed !== 'object' || parsed === null) {
+		return {};
+	}
+	const record = parsed as Record<string, unknown>;
+	const title = record.title;
+	const description = record.description;
+	return {
+		...(typeof title === 'string' && Str.isNonEmpty(title)
+			? { title }
+			: {}),
+		...(typeof description === 'string' && Str.isNonEmpty(description)
+			? { description }
+			: {})
+	};
+};
+
 const renderDocument = (
 	page: DocPage,
 	content: PageContent,
@@ -41,8 +73,8 @@ const renderDocument = (
 		[
 			'---',
 			`url: ${page.url}`,
-			`title: ${yamlString(page.title)}`,
-			`description: ${yamlString(page.description)}`,
+			`title: ${yamlString(sourceMetadata(content.body).title ?? page.title)}`,
+			`description: ${yamlString(sourceMetadata(content.body).description ?? page.description)}`,
 			`access_date: ${timestamp}`,
 			`current_date: ${timestamp}`,
 			'---',

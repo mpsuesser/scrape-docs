@@ -25,7 +25,8 @@
     "alchemy": "2.0.0-beta.61",
     "defuddle": "0.18.1",
     "effect": "4.0.0-beta.94",
-    "linkedom": "0.18.12"
+    "linkedom": "0.18.12",
+    "yaml": "2.9.0"
   },
   "devDependencies": {
     "@effect/platform-node": "4.0.0-beta.94",

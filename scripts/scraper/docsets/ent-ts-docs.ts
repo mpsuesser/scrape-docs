@@ -9,8 +9,10 @@ import {
 	DocScraperLayer,
 	DocSetConfig,
 	DocSetScraper,
+	PageSource,
 	RewriteDocsetWebLinksStrategy,
-	SitemapIndexStrategy
+	SitemapIndexStrategy,
+	SourceUrlStrategy
 } from '../doc-scraper.ts';
 
 const entTsDocSet = new DocSetConfig({
@@ -21,7 +23,18 @@ const entTsDocSet = new DocSetConfig({
 		outputPathUrlPrefix: Option.some('https://ent.dev/docs/')
 	}),
 	outputDirectory: 'docs/deps/ent-ts',
-	contentStrategies: [new DefuddleStrategy({})],
+	contentStrategies: [
+		new SourceUrlStrategy({
+			sources: [
+				new PageSource({
+					pageUrl: 'https://ent.dev/docs/actions/viewer-ent-load',
+					sourceUrl:
+						'https://raw.githubusercontent.com/lolopinto/ent/main/docs/docs/actions/viewer-ent-load.md'
+				})
+			]
+		}),
+		new DefuddleStrategy({})
+	],
 	postProcessingStrategies: [new RewriteDocsetWebLinksStrategy({})],
 	concurrency: 8,
 	cleanOutputDirectory: true
