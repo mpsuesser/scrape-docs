@@ -454,7 +454,7 @@ export class DocPostProcessor extends Context.Service<
 			documents: ReadonlyArray<WrittenDocument>
 		) => Effect.Effect<number, DocPostProcessError>;
 	}
->()('@mydb/scripts/scraper/DocPostProcessor') {}
+>()('@mydb/scraper/DocPostProcessor') {}
 
 export const DocPostProcessorLayer: Layer.Layer<
 	DocPostProcessor,

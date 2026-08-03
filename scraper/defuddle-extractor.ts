@@ -89,7 +89,7 @@ export class DefuddleExtractor extends Context.Service<
 			html: string
 		) => Effect.Effect<string, PageContentError>;
 	}
->()('@mydb/scripts/scraper/DefuddleExtractor') {}
+>()('@mydb/scraper/DefuddleExtractor') {}
 
 export const DefuddleExtractorLayer: Layer.Layer<DefuddleExtractor> = Layer
 	.succeed(

@@ -74,7 +74,7 @@ export class LlmsIndexReader extends Context.Service<
 			HttpFetchError | LlmsIndexParseError
 		>;
 	}
->()('@mydb/scripts/scraper/LlmsIndexReader') {}
+>()('@mydb/scraper/LlmsIndexReader') {}
 
 export const LlmsIndexReaderLayer: Layer.Layer<
 	LlmsIndexReader,

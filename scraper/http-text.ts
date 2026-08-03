@@ -14,7 +14,7 @@ export class HttpText extends Context.Service<
 			accept?: string
 		) => Effect.Effect<string, HttpFetchError>;
 	}
->()('@mydb/scripts/scraper/HttpText') {}
+>()('@mydb/scraper/HttpText') {}
 
 export const HttpTextLayer: Layer.Layer<
 	HttpText,

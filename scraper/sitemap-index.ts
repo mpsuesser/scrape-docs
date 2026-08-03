@@ -307,7 +307,7 @@ export class SitemapIndexReader extends Context.Service<
 			HttpFetchError | InvalidDocUrlError | SitemapIndexParseError
 		>;
 	}
->()('@mydb/scripts/scraper/SitemapIndexReader') {}
+>()('@mydb/scraper/SitemapIndexReader') {}
 
 export const SitemapIndexReaderLayer: Layer.Layer<
 	SitemapIndexReader,

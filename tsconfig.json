@@ -1,6 +1,6 @@
 {
   "$schema": "https://www.schemastore.org/tsconfig.json",
-  "include": ["alchemy.run.ts", "scripts/**/*.ts"],
+  "include": ["alchemy.run.ts", "scraper/**/*.ts"],
   "compilerOptions": {
     "target": "ES2022",
     "module": "NodeNext",

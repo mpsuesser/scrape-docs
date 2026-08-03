@@ -2,7 +2,7 @@
 
 Centralized, scheduled documentation scraping for a collection of public Markdown repositories.
 
-The scraper runs daily on GitHub Actions and publishes each docset to `mpsuesser/scraped-docs-<name>`. Downstream repositories contain only the generated documentation and can be used directly as OpenCode references.
+The scraper runs every 5 minutes on GitHub Actions and publishes each docset to `mpsuesser/scraped-docs-<name>`. Downstream repositories contain only the generated documentation and can be used directly as OpenCode references.
 
 ## Docsets
 

@@ -250,7 +250,7 @@ export class GithubMarkdownDirectoryIndexReader extends Context.Service<
 			HttpFetchError | GithubMarkdownDirectoryIndexParseError
 		>;
 	}
->()('@mydb/scripts/scraper/GithubMarkdownDirectoryIndexReader') {}
+>()('@mydb/scraper/GithubMarkdownDirectoryIndexReader') {}
 
 export const GithubMarkdownDirectoryIndexReaderLayer: Layer.Layer<
 	GithubMarkdownDirectoryIndexReader,

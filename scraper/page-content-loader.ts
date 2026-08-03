@@ -103,7 +103,7 @@ export class PageContentLoader extends Context.Service<
 			strategies: ReadonlyArray<ContentStrategy>
 		) => Effect.Effect<PageContent, AllContentStrategiesFailed>;
 	}
->()('@mydb/scripts/scraper/PageContentLoader') {}
+>()('@mydb/scraper/PageContentLoader') {}
 
 export const PageContentLoaderLayer: Layer.Layer<
 	PageContentLoader,

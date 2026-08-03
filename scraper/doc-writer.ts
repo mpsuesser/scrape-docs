@@ -105,7 +105,7 @@ export class DocWriter extends Context.Service<
 			timestamp: string
 		) => Effect.Effect<WrittenDocument, DocWriteError | InvalidDocUrlError>;
 	}
->()('@mydb/scripts/scraper/DocWriter') {}
+>()('@mydb/scraper/DocWriter') {}
 
 export const DocWriterLayer: Layer.Layer<
 	DocWriter,

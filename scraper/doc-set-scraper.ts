@@ -48,7 +48,7 @@ export class DocSetScraper extends Context.Service<
 			| SitemapIndexParseError
 		>;
 	}
->()('@mydb/scripts/scraper/DocSetScraper') {}
+>()('@mydb/scraper/DocSetScraper') {}
 
 export const DocSetScraperLayer: Layer.Layer<
 	DocSetScraper,
