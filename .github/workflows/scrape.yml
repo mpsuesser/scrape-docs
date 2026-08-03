@@ -20,12 +20,15 @@ jobs:
       matrix:
         docset:
           - alchemy
+          - better-auth
+          - drizzle
           - electron
           - ent-go
           - ent-ts
           - foldkit
           - ladybugdb
           - pi
+          - planetscale
           - ts-morph
           - turborepo
     runs-on: ubuntu-latest

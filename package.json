@@ -8,6 +8,8 @@
     "alchemy:plan": "alchemy plan",
     "alchemy:deploy": "alchemy deploy",
     "alchemy:destroy": "alchemy destroy",
+    "scrape-docs:better-auth": "bun run scraper/docsets/better-auth-docs.ts",
+    "scrape-docs:drizzle": "bun run scraper/docsets/drizzle-docs.ts",
     "scrape-docs:foldkit": "bun run scraper/docsets/foldkit-docs.ts",
     "scrape-docs:alchemy": "bun run scraper/docsets/alchemy-docs.ts",
     "scrape-docs:ent-ts": "bun run scraper/docsets/ent-ts-docs.ts",
@@ -16,6 +18,7 @@
     "scrape-docs:ts-morph": "bun run scraper/docsets/ts-morph-docs.ts",
     "scrape-docs:pi": "bun run scraper/docsets/pi-docs.ts",
     "scrape-docs:electron": "bun run scraper/docsets/electron-docs.ts",
+    "scrape-docs:planetscale": "bun run scraper/docsets/planetscale-docs.ts",
     "scrape-docs:turborepo": "bun run scraper/docsets/turborepo-docs.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run --passWithNoTests"

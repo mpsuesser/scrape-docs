@@ -27,12 +27,15 @@ The scraper runs every 5 minutes on GitHub Actions and publishes each docset to 
 ## Docsets
 
 - [Alchemy](https://github.com/mpsuesser/scraped-docs-alchemy)
+- [Better Auth](https://github.com/mpsuesser/scraped-docs-better-auth)
+- [Drizzle](https://github.com/mpsuesser/scraped-docs-drizzle)
 - [Electron](https://github.com/mpsuesser/scraped-docs-electron)
 - [Ent (Go)](https://github.com/mpsuesser/scraped-docs-ent-go)
 - [Ent (TypeScript)](https://github.com/mpsuesser/scraped-docs-ent-ts)
 - [Foldkit](https://github.com/mpsuesser/scraped-docs-foldkit)
 - [LadybugDB](https://github.com/mpsuesser/scraped-docs-ladybugdb)
 - [Pi](https://github.com/mpsuesser/scraped-docs-pi)
+- [PlanetScale](https://github.com/mpsuesser/scraped-docs-planetscale)
 - [ts-morph](https://github.com/mpsuesser/scraped-docs-ts-morph)
 - [Turborepo](https://github.com/mpsuesser/scraped-docs-turborepo)
 

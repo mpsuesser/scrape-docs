@@ -4,12 +4,15 @@ import * as Effect from 'effect/Effect';
 
 const docsets = [
 	'alchemy',
+	'better-auth',
+	'drizzle',
 	'electron',
 	'ent-go',
 	'ent-ts',
 	'foldkit',
 	'ladybugdb',
 	'pi',
+	'planetscale',
 	'ts-morph',
 	'turborepo'
 ] as const;
