@@ -5,7 +5,8 @@ import { parseHTML } from 'linkedom';
 import { prepareDocumentForExtraction } from '../defuddle-extractor.ts';
 import {
 	isStandaloneMarkdown,
-	normalizeDocusaurusMarkdown
+	normalizeDocusaurusMarkdown,
+	redactKnownExampleCredentials
 } from '../page-content-loader.ts';
 
 describe('content normalization', () => {
@@ -101,5 +102,17 @@ More context.
 		assert.include(output, '> **Important:**\n>\n> Do not skip this.');
 		assert.include(output, '> **Note:**\n>\n> More context.');
 		assert.notInclude(output, ':::');
+	});
+
+	it('redacts realistic PlanetScale example credentials', () => {
+		const output = redactKnownExampleCredentials(`{
+  "access_token": "pscale_oauth_8zO_rNQCct1Uj8zkTWLh3kgwAqg8UabGIc43D2eINvo",
+  "refresh_token": "pscale_oauth_refresh_W_zjmZ1a14sczj15bxJdsW_kiv063OrHG4CBh0IXR9M"
+}`);
+
+		assert.include(output, '"<PLANETSCALE_OAUTH_ACCESS_TOKEN>"');
+		assert.include(output, '"<PLANETSCALE_OAUTH_REFRESH_TOKEN>"');
+		assert.notInclude(output, '8zO_rNQC');
+		assert.notInclude(output, 'W_zjmZ1a');
 	});
 });

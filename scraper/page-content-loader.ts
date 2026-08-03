@@ -26,7 +26,7 @@ const requireNonEmptyBody = (
 	body: string
 ): Effect.Effect<PageContent, PageContentError> =>
 	Effect.gen(function* () {
-		const trimmed = Str.trim(body);
+		const trimmed = Str.trim(redactKnownExampleCredentials(body));
 		return yield* Bool.match(Str.isNonEmpty(trimmed), {
 			onFalse: () =>
 				Effect.fail(
@@ -46,6 +46,15 @@ const requireNonEmptyBody = (
 				)
 		});
 	});
+
+export const redactKnownExampleCredentials = (body: string): string =>
+	body.replace(
+		/pscale_oauth_(refresh_)?[A-Za-z0-9_-]{20,}/g,
+		(_token, refresh: string | undefined) =>
+			refresh === undefined
+				? '<PLANETSCALE_OAUTH_ACCESS_TOKEN>'
+				: '<PLANETSCALE_OAUTH_REFRESH_TOKEN>'
+	);
 
 const unsupportedMdx =
 	/<(?:PackageManagerTabs|Tab|Steps|Step|Callout|Tabs|TabItem)\b|src=\{__img\d+\}|^import .+ from ['"]@theme\//m;
