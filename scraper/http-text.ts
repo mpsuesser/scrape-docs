@@ -1,10 +1,12 @@
-import { Context, Effect, Layer } from 'effect';
+import { Config, Context, Effect, Layer } from 'effect';
+import * as Option from 'effect/Option';
 import { HttpClient, HttpClientRequest } from 'effect/unstable/http';
 
 import { HttpFetchError } from './errors.ts';
 
 const defaultUserAgent =
 	'mydb-doc-scraper/1.0 (+https://github.com/josephyoung/mydb)';
+const githubApiUrlPrefix = 'https://api.github.com/';
 
 export class HttpText extends Context.Service<
 	HttpText,
@@ -23,6 +25,9 @@ export const HttpTextLayer: Layer.Layer<
 > = Layer.effect(
 	HttpText,
 	Effect.gen(function* () {
+		const githubToken = yield* Config.option(
+			Config.redacted('GITHUB_TOKEN')
+		).pipe(Effect.orDie);
 		const client = (yield* HttpClient.HttpClient).pipe(
 			HttpClient.followRedirects(),
 			HttpClient.filterStatusOk
@@ -33,10 +38,15 @@ export const HttpTextLayer: Layer.Layer<
 			accept =
 				'text/markdown, text/plain, application/vnd.github+json;q=0.9, application/json;q=0.9, application/xml;q=0.8, text/xml;q=0.8, text/html;q=0.7'
 		) {
-			const request = HttpClientRequest.get(url).pipe(
+			let request = HttpClientRequest.get(url).pipe(
 				HttpClientRequest.accept(accept),
 				HttpClientRequest.setHeader('User-Agent', defaultUserAgent)
 			);
+			if (url.startsWith(githubApiUrlPrefix) && Option.isSome(githubToken)) {
+				request = request.pipe(
+					HttpClientRequest.bearerToken(githubToken.value)
+				);
+			}
 			const response = yield* client.execute(request).pipe(
 				Effect.mapError(
 					(cause) =>
