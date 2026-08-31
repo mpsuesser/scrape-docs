@@ -50,13 +50,18 @@ const requireNonEmptyBody = (
 	});
 
 export const redactKnownExampleCredentials = (body: string): string =>
-	body.replace(
-		/pscale_oauth_(refresh_)?[A-Za-z0-9_-]{20,}/g,
-		(_token, refresh: string | undefined) =>
-			refresh === undefined
-				? '<PLANETSCALE_OAUTH_ACCESS_TOKEN>'
-				: '<PLANETSCALE_OAUTH_REFRESH_TOKEN>'
-	);
+	body
+		.replace(
+			/pscale_oauth_(refresh_)?[A-Za-z0-9_-]{20,}/g,
+			(_token, refresh: string | undefined) =>
+				refresh === undefined
+					? '<PLANETSCALE_OAUTH_ACCESS_TOKEN>'
+					: '<PLANETSCALE_OAUTH_REFRESH_TOKEN>'
+		)
+		.replace(
+			/pscale_pw_[A-Za-z0-9_-]{20,}/g,
+			'pscale_pw_<PLANETSCALE_DATABASE_PASSWORD>'
+		);
 
 const unsupportedMdx =
 	/<[A-Z][A-Za-z]*\b|src=\{__img\d+\}|^import .+ from ['"]@theme\/|^export const \w+\s*=.*=>\s*\{/m;

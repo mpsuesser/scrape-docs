@@ -15,7 +15,16 @@ import {
 const foldkitDocSet = new DocSetConfig({
 	name: 'foldkit',
 	indexUrl: 'https://foldkit.dev/llms.txt',
-	indexStrategy: new LlmsTxtIndexStrategy({}),
+	indexStrategy: new LlmsTxtIndexStrategy({
+		excludeUrls: [
+			'https://foldkit.dev/llms-full.txt',
+			'https://foldkit.dev/api/v1',
+			'https://foldkit.dev/openapi.json',
+			'https://foldkit.dev/sitemap.xml',
+			'https://foldkit.dev/blog/rss.xml',
+			'https://github.com/foldkit/foldkit'
+		]
+	}),
 	outputDirectory: 'docs/deps/foldkit',
 	contentStrategies: [
 		new MarkdownUrlStrategy({}),

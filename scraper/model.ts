@@ -3,7 +3,10 @@ import * as Option from 'effect/Option';
 
 export class LlmsTxtIndexStrategy
 	extends Schema.Class<LlmsTxtIndexStrategy>('LlmsTxtIndexStrategy')({
-		_tag: Schema.tag('LlmsTxtIndexStrategy')
+		_tag: Schema.tag('LlmsTxtIndexStrategy'),
+		excludeUrls: Schema.Array(Schema.NonEmptyString).pipe(
+			Schema.withConstructorDefault(Effect.succeed([]))
+		)
 	})
 {}
 

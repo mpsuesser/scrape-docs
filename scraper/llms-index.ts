@@ -1,10 +1,18 @@
-import { Array as Arr, Context, Effect, Layer, String as Str } from 'effect';
+import {
+	Array as Arr,
+	Boolean as Bool,
+	Context,
+	Effect,
+	Layer,
+	String as Str
+} from 'effect';
 import { pipe } from 'effect/Function';
 import * as Option from 'effect/Option';
+import * as Schema from 'effect/Schema';
 
 import { HttpFetchError, LlmsIndexParseError } from './errors.ts';
 import { HttpText } from './http-text.ts';
-import { DocPage } from './model.ts';
+import { DocPage, type LlmsTxtIndexStrategy } from './model.ts';
 
 const llmsEntryLine =
 	/^- \[([^\]]+)\]\((https?:\/\/[^)]+)\)\s*(?::|[—–-])\s*(.*)$/;
@@ -36,9 +44,11 @@ const parseIndexLine = (line: string): Option.Option<DocPage> =>
 
 const parseLlmsIndex = (
 	url: string,
-	body: string
+	body: string,
+	strategy: LlmsTxtIndexStrategy
 ): Effect.Effect<ReadonlyArray<DocPage>, LlmsIndexParseError> =>
 	Effect.gen(function* () {
+		const urlEquals = Schema.toEquivalence(Schema.String);
 		const pages = pipe(
 			Str.split(body, '\n'),
 			Arr.flatMap((line) =>
@@ -48,6 +58,13 @@ const parseLlmsIndex = (
 						onNone: () => [],
 						onSome: (page) => [page]
 					})
+				)
+			),
+			Arr.filter((page) =>
+				Bool.not(
+					Arr.some(strategy.excludeUrls, (excludedUrl) =>
+						urlEquals(excludedUrl, page.url)
+					)
 				)
 			)
 		);
@@ -68,7 +85,8 @@ export class LlmsIndexReader extends Context.Service<
 	LlmsIndexReader,
 	{
 		readonly load: (
-			url: string
+			url: string,
+			strategy: LlmsTxtIndexStrategy
 		) => Effect.Effect<
 			ReadonlyArray<DocPage>,
 			HttpFetchError | LlmsIndexParseError
@@ -85,9 +103,12 @@ export const LlmsIndexReaderLayer: Layer.Layer<
 	Effect.gen(function* () {
 		const http = yield* HttpText;
 
-		const load = Effect.fn('LlmsIndexReader.load')(function* (url: string) {
+		const load = Effect.fn('LlmsIndexReader.load')(function* (
+			url: string,
+			strategy: LlmsTxtIndexStrategy
+		) {
 			const body = yield* http.get(url);
-			return yield* parseLlmsIndex(url, body);
+			return yield* parseLlmsIndex(url, body, strategy);
 		});
 
 		return LlmsIndexReader.of({ load });

@@ -76,7 +76,8 @@ export const DocSetScraperLayer: Layer.Layer<
 				const pages = yield* Match.value(docSet.indexStrategy).pipe(
 					Match.tag(
 						'LlmsTxtIndexStrategy',
-						() => llmsIndexes.load(docSet.indexUrl)
+						(strategy) =>
+							llmsIndexes.load(docSet.indexUrl, strategy)
 					),
 					Match.tag(
 						'SitemapIndexStrategy',

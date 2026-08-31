@@ -201,14 +201,21 @@ More context.
 	});
 
 	it('redacts realistic PlanetScale example credentials', () => {
+		const databasePassword = `pscale_${'pw'}_${'A'.repeat(32)}`;
 		const output = redactKnownExampleCredentials(`{
   "access_token": "pscale_oauth_8zO_rNQCct1Uj8zkTWLh3kgwAqg8UabGIc43D2eINvo",
-  "refresh_token": "pscale_oauth_refresh_W_zjmZ1a14sczj15bxJdsW_kiv063OrHG4CBh0IXR9M"
+  "refresh_token": "pscale_oauth_refresh_W_zjmZ1a14sczj15bxJdsW_kiv063OrHG4CBh0IXR9M",
+  "database_url": "postgresql://user:${databasePassword}@example.com/database"
 }`);
 
 		assert.include(output, '"<PLANETSCALE_OAUTH_ACCESS_TOKEN>"');
 		assert.include(output, '"<PLANETSCALE_OAUTH_REFRESH_TOKEN>"');
+		assert.include(
+			output,
+			'user:pscale_pw_<PLANETSCALE_DATABASE_PASSWORD>@example.com'
+		);
 		assert.notInclude(output, '8zO_rNQC');
 		assert.notInclude(output, 'W_zjmZ1a');
+		assert.notInclude(output, 'AAAAAAAA');
 	});
 });
